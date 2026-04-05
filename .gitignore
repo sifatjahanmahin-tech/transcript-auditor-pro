@@ -1,0 +1,26 @@
+# Secrets
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+frontend/.next/
+frontend/out/
+
+# Uploads
+uploads/
+
+# Misc
+*.log
+stress_test_data/
+stress_report.md
+.claude/

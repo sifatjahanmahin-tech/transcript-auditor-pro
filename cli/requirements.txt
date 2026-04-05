@@ -1,0 +1,6 @@
+requests==2.31.0
+pydantic==2.6.4
+rich==13.7.1
+pillow==10.2.0
+pytesseract==0.3.10
+opencv-python==4.9.0.80

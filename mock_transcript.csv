@@ -1,0 +1,16 @@
+Course Code,Course Title,Credits,Grade,Semester,Type
+ENG102,Introduction to Composition,3.0,A,Spring 2024,Mandatory
+MAT116,Pre-calculus,3.0,B+,Spring 2024,Mandatory
+CSE115,Programming Language I,4.0,A-,Spring 2024,Core
+PHY107,Physics I,4.0,B,Fall 2024,Core
+CSE215,Programming Language II,4.0,A,Fall 2024,Core
+MAT120,Calculus I,3.0,A,Fall 2024,Mandatory
+BIO103,Biology I,4.0,B+,Fall 2024,Core
+ENG103,Critical Thinking,3.0,A-,Spring 2025,Mandatory
+CSE173,Discrete Mathematics,3.0,A,Spring 2025,Core
+ECO101,Microeconomics,3.0,A,Spring 2025,Elective
+MAT240,Calculus II,3.0,B,Spring 2025,Mandatory
+PHY108,Physics II,4.0,A-,Fall 2025,Core
+CSE225,Data Structures,4.0,B+,Fall 2025,Core
+CSE231,Digital Logic Design,4.0,A,Fall 2025,Core
+MAT250,Linear Algebra,3.0,A-,Fall 2025,Mandatory

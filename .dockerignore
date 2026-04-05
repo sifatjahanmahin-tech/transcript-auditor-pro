@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+node_modules
+frontend/.next
+stress_test_data
+uploads
+*.log
+.git

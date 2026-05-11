@@ -18,17 +18,17 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     CORS_ORIGINS: list[str] = [
+        "https://transcript-auditor-pro.vercel.app",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        # Expo / mobile development origins
         "http://localhost:8081",
         "http://10.0.2.2:8000",
         "exp://localhost:8081",
     ]
 
     # ── Database ──
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/audit_pro"
-    DATABASE_URL_SYNC: str = "postgresql://postgres:postgres@localhost:5432/audit_pro"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./audit_pro.db"
+    DATABASE_URL_SYNC: str = "sqlite:///./audit_pro.db"
     DATABASE_SSL: bool = False
 
     # ── Auth ──
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"  # Override via env var in prod
     # Mobile OAuth callback — must match what's registered in Google Cloud Console
     # Use your machine's LAN IP so the emulator/device browser can reach it
     MOBILE_REDIRECT_URI: str = "http://192.168.110.118:8000/api/auth/google/callback"
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     OCR_ALLOWED_EXTENSIONS: list[str] = [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".pdf"]
 
     # ── Frontend ──
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "https://transcript-auditor-pro.vercel.app"
 
     # ── Upload ──
     MAX_UPLOAD_SIZE_MB: int = 10

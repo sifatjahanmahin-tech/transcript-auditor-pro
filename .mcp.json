@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "transcript-auditor": {
+      "command": "D:/vibecode project 1/.venv/Scripts/python",
+      "args": ["-m", "transcript_mcp.server"],
+      "cwd": "D:/vibecode project 1",
+      "env": {
+        "BACKEND_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

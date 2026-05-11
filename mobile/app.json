@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Transcript Auditor",
+    "slug": "transcript-auditor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "transcriptauditor",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6366F1"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nsu.transcriptauditor",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera to scan transcripts.",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to upload transcripts.",
+        "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save reports to your photo library."
+      }
+    },
+    "android": {
+      "package": "com.nsu.transcriptauditor",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6366F1"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to upload transcripts.",
+          "cameraPermission": "The app needs access to your camera to scan transcripts."
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.110.118:8000",
+      "googleClientId": "295441721372-6ccraqnf34rkmobq184opp81o2ot41j7.apps.googleusercontent.com"
+    }
+  }
+}

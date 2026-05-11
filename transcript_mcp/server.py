@@ -1,20 +1,20 @@
 """
-MCP Server — Transcript Auditor Pro
-====================================
-Exposes 5 tools and 2 reusable prompts via the Model Context Protocol.
+MCP Server — Transcript Auditor Pro (NSU Degree Audit)
+======================================================
+Exposes 5 tools and 2 prompts via the Model Context Protocol.
 
 Tools
 ------
-  audit_transcript      – Full quality audit with issue detection
-  summarize_transcript  – Structured summary (speakers, topics, key moments)
-  compare_transcripts   – Diff two transcript versions
-  flag_issues           – Targeted issue detection with category filters
-  export_report         – Render audit results as JSON or Markdown
+  audit_transcript      – Full degree audit against program requirements
+  summarize_transcript  – CGPA, credits, grade distribution, semester breakdown
+  compare_transcripts   – Side-by-side comparison of two academic transcripts
+  flag_issues           – Targeted issue detection (F grades, withdrawals, probation …)
+  export_report         – Render any tool result as Markdown or JSON
 
 Prompts
 --------
-  deep_audit   – Comprehensive grammar + factual + formatting check
-  quick_review – Critical-errors-only triage
+  deep_audit   – Comprehensive degree audit with actionable recommendations
+  quick_review – Fast triage for critical academic issues only
 
 Backend integration
 -------------------
@@ -23,11 +23,8 @@ to the FastAPI backend at /api/mcp/save-audit so it appears in audit history.
 
 Usage
 ------
-  # stdio (default — works with Claude Desktop / claude CLI)
-  python -m mcp.server
-
-  # or via the MCP CLI
-  mcp run mcp/server.py
+  # stdio (Claude Desktop / claude CLI)
+  python -m transcript_mcp.server
 """
 
 from __future__ import annotations
@@ -37,14 +34,14 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from .academic_analyzer import AcademicAnalyzer
 from .backend_client import BackendClient
-from .transcript_analyzer import TranscriptAnalyzer
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(name)s | %(message)s")
 logger = logging.getLogger("transcript_auditor_mcp")
 
 mcp = FastMCP("Transcript Auditor Pro")
-_analyzer = TranscriptAnalyzer()
+_analyzer = AcademicAnalyzer()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -54,32 +51,45 @@ _analyzer = TranscriptAnalyzer()
 
 @mcp.tool()
 async def audit_transcript(
-    transcript: str,
+    csv_text: str,
+    program_name: str = "Computer Science & Engineering",
+    waived_courses: str = "",
     auth_token: str = "",
     save_to_backend: bool = False,
 ) -> dict[str, Any]:
     """
-    Analyze a transcript for accuracy, completeness, speaker identification
-    errors, and suspicious segments.
+    Run a full NSU degree audit on an academic transcript CSV.
 
-    Returns a quality score (0-100), issue list, and suspicious segment report.
-    Optionally saves the result to the FastAPI audit history.
+    Checks every mandatory course in the specified program, calculates CGPA,
+    tallies earned credits, and flags graduation eligibility.
 
     Args:
-        transcript: Raw transcript text (supports timestamped and plain formats)
-        auth_token: Bearer JWT from the FastAPI backend (required if save_to_backend=True)
+        csv_text:       Raw CSV content with columns: course_code, course_name,
+                        grade, credits, semester
+        program_name:   Degree program to audit against. Accepts:
+                        "Computer Science & Engineering" (default) or
+                        "Electrical & Computer Engineering"
+                        Also accepts short forms: "CSE", "ECE", "EEE".
+        waived_courses: Comma-separated course codes the student has waivers for
+                        (e.g. "ENG102, BUS112"). These are treated as completed.
+        auth_token:     Bearer JWT from the FastAPI backend (required if save_to_backend=True)
         save_to_backend: When True, POST result to /api/mcp/save-audit
-    """
-    logger.info("audit_transcript called (save=%s)", save_to_backend)
-    result = _analyzer.audit(transcript)
 
-    if save_to_backend and auth_token:
+    Returns:
+        dict with: program, cgpa, academic_standing, total_earned_credits,
+        credit_deficit, missing_courses, on_probation, graduation_eligible,
+        credit_breakdown, completed_courses
+    """
+    logger.info("audit_transcript called (program=%s, save=%s)", program_name, save_to_backend)
+    result = _analyzer.audit(csv_text, program_name, waived_courses)
+
+    if save_to_backend and auth_token and "error" not in result:
         try:
             async with BackendClient(auth_token) as client:
                 saved = await client.save_mcp_audit(
                     audit_type="audit_transcript",
                     result=result,
-                    raw_text=transcript,
+                    raw_text=csv_text[:10_000],
                 )
             result["backend_record_id"] = saved.get("id")
         except Exception as exc:
@@ -91,32 +101,35 @@ async def audit_transcript(
 
 @mcp.tool()
 async def summarize_transcript(
-    transcript: str,
+    csv_text: str,
     auth_token: str = "",
     save_to_backend: bool = False,
 ) -> dict[str, Any]:
     """
-    Generate a structured summary of a transcript.
+    Generate an academic performance summary from a transcript CSV.
 
-    Returns duration, speaker list, word counts per speaker, key topics
-    extracted heuristically, and up to 20 key moments (speaker-change events
-    with timestamps).
+    Returns CGPA, total earned credits, semester-by-semester breakdown,
+    grade distribution, retake counts, and key stats.
 
     Args:
-        transcript: Raw transcript text
-        auth_token: Bearer JWT from the FastAPI backend (required if save_to_backend=True)
+        csv_text:        Raw CSV content (course_code, course_name, grade, credits, semester)
+        auth_token:      Bearer JWT (required if save_to_backend=True)
         save_to_backend: When True, POST result to /api/mcp/save-audit
+
+    Returns:
+        dict with: cgpa, academic_standing, total_earned_credits, grade_distribution,
+        semester_breakdown, retake_count, f_grade_count, w_grade_count, semesters
     """
     logger.info("summarize_transcript called (save=%s)", save_to_backend)
-    result = _analyzer.summarize(transcript)
+    result = _analyzer.summarize(csv_text)
 
-    if save_to_backend and auth_token:
+    if save_to_backend and auth_token and "error" not in result:
         try:
             async with BackendClient(auth_token) as client:
                 saved = await client.save_mcp_audit(
                     audit_type="summarize_transcript",
                     result=result,
-                    raw_text=transcript,
+                    raw_text=csv_text[:10_000],
                 )
             result["backend_record_id"] = saved.get("id")
         except Exception as exc:
@@ -128,48 +141,57 @@ async def summarize_transcript(
 
 @mcp.tool()
 async def compare_transcripts(
-    transcript_a: str,
-    transcript_b: str,
-    label_a: str = "Version A",
-    label_b: str = "Version B",
+    csv_a: str,
+    csv_b: str,
+    program_name: str = "Computer Science & Engineering",
+    label_a: str = "Student A",
+    label_b: str = "Student B",
 ) -> dict[str, Any]:
     """
-    Diff two versions of the same transcript and highlight changes.
+    Compare two NSU academic transcripts side-by-side.
 
-    Returns a similarity ratio, categorized change list (added / removed /
-    changed), and a unified diff string suitable for display.
+    Runs a full degree audit on each and produces a diff showing CGPA delta,
+    credit delta, and courses unique to each transcript.
 
     Args:
-        transcript_a: Original transcript text
-        transcript_b: Revised transcript text
-        label_a: Human-readable label for the first version
-        label_b: Human-readable label for the second version
+        csv_a:        First transcript CSV text
+        csv_b:        Second transcript CSV text
+        program_name: Degree program to audit both against
+        label_a:      Display name for the first student
+        label_b:      Display name for the second student
+
+    Returns:
+        dict with per-student audit results plus a diff section
     """
-    logger.info("compare_transcripts called")
-    return _analyzer.compare(transcript_a, transcript_b, label_a, label_b)
+    logger.info("compare_transcripts called (program=%s)", program_name)
+    return _analyzer.compare(csv_a, csv_b, program_name, label_a, label_b)
 
 
 @mcp.tool()
 async def flag_issues(
-    transcript: str,
+    csv_text: str,
     checks: list[str] | None = None,
 ) -> dict[str, Any]:
     """
-    Detect issues in a transcript across up to five check categories.
+    Detect academic issues in a transcript CSV across multiple check categories.
 
-    Available checks (pass as list or omit for all):
-      - "crosstalk"   – overlapping / cross-talk markers
-      - "inaudible"   – [inaudible] segments, especially consecutive ones
-      - "timestamps"  – missing, out-of-order, or inconsistent-format timestamps
-      - "speakers"    – inconsistent or near-duplicate speaker labels
-      - "formatting"  – trailing whitespace and other cosmetic issues
+    Available checks (pass as a list or omit for all):
+      - "failures"    – Courses that have an F with no passing retake
+      - "withdrawals" – Courses where the student withdrew (W grade)
+      - "retakes"     – Courses taken more than once
+      - "probation"   – CGPA below 2.0 (Academic Probation)
+      - "incomplete"  – Courses with no grade recorded yet
+      - "low_grades"  – Courses graded D+, D, or D- (passing but very low)
 
     Args:
-        transcript: Raw transcript text to check
-        checks: Subset of check names to run. Defaults to all five.
+        csv_text: Raw CSV content (course_code, course_name, grade, credits, semester)
+        checks:   Subset of check names to run. Defaults to all six.
+
+    Returns:
+        dict with: total_issues, cgpa, checks_run, by_category, all_issues
     """
     logger.info("flag_issues called (checks=%s)", checks)
-    return _analyzer.flag_issues(transcript, checks)
+    return _analyzer.flag_issues(csv_text, checks)
 
 
 @mcp.tool()
@@ -179,18 +201,21 @@ async def export_report(
     output_path: str = "",
 ) -> str:
     """
-    Render audit results as a Markdown or JSON report.
+    Render any tool result as a formatted Markdown or JSON report.
 
-    Accepts the dict output from any of the other tools (audit_transcript,
-    summarize_transcript, compare_transcripts, flag_issues).
+    Accepts output from audit_transcript, summarize_transcript,
+    compare_transcripts, or flag_issues.
 
     Args:
-        audit_result: The result dict from one of the audit tools
-        format: "markdown" (default) or "json"
-        output_path: Optional file path to write the report to (e.g. "report.md").
-                     If empty, the report is only returned as a string.
+        audit_result: Result dict from one of the audit tools
+        format:       "markdown" (default) or "json"
+        output_path:  Optional file path to write the report (e.g. "report.md").
+                      If empty, the report is only returned as a string.
+
+    Returns:
+        Formatted report string
     """
-    logger.info("export_report called (format=%s, output_path=%r)", format, output_path)
+    logger.info("export_report called (format=%s, path=%r)", format, output_path)
     report = _analyzer.export_report(audit_result, format)
 
     if output_path:
@@ -205,98 +230,99 @@ async def export_report(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PROMPTS / SKILLS
+# PROMPTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @mcp.prompt()
 def deep_audit() -> str:
     """
-    Deep audit mode — comprehensive grammar, factual consistency, and formatting
-    check. Best for legal, medical, academic, or archival transcripts where
-    accuracy is critical.
+    Deep audit mode — comprehensive degree check with actionable recommendations.
+    Best when a student needs to plan their remaining semesters or is approaching
+    graduation and wants a thorough readiness assessment.
     """
     return """\
-You are a professional transcript auditor. Perform a DEEP AUDIT on the transcript provided.
+You are an expert NSU academic advisor performing a DEEP DEGREE AUDIT.
 
-Work through every category below and report findings.
-
-## 1  Grammar & Language
-- Spelling and grammatical errors
-- Run-on sentences or missing punctuation
-- Inconsistent verb tense or person
-
-## 2  Speaker Identification
-- Consistent speaker labels throughout
-- No speaker swaps (text attributed to the wrong person)
-- Ambiguous pronouns that may cause confusion
-
-## 3  Factual Consistency
-- Internal contradictions (two statements that cannot both be true)
-- Numerical data: dates, figures, names — are they consistent?
-- Technical terminology: is it used correctly and consistently?
-
-## 4  Timestamps
-- Consistent format (all HH:MM:SS or all MM:SS — not mixed)
-- Chronological order (no backward jumps)
-- No speaker lines missing a timestamp if others have them
-
-## 5  Completeness
-- Missing sections or abrupt endings
-- [inaudible] or [crosstalk] clusters obscuring key content
-- Suspicious gaps in the timeline (large jumps with no explanation)
-
-## 6  Formatting
-- Line break and paragraph structure
-- Special character handling
-- Consistent punctuation style at line ends
+The student has provided their academic transcript. Using the `audit_transcript`
+and `flag_issues` MCP tools, perform a thorough analysis covering every area below.
 
 ---
 
-For **every issue found**, report:
-| Field | Content |
-|-------|---------|
-| Location | Line number or timestamp range |
-| Category | Grammar / Speaker / Factual / Timestamps / Completeness / Formatting |
-| Severity | **Critical** / **Major** / **Minor** |
-| Description | What is wrong |
-| Suggestion | Proposed correction (if deterministic) |
+## 1  CGPA & Academic Standing
+- Current CGPA and academic standing (Dean's List / Honor Roll / Good Standing /
+  Satisfactory / Academic Probation)
+- Trend: is the student improving, stable, or declining semester by semester?
+- If CGPA < 2.0: list the specific courses dragging it down and by how many points
+
+## 2  Credit Progress
+- Total credits earned vs. total required
+- Estimated semesters remaining (assume 15 cr/semester)
+- Any 0-credit lab courses that must be paired with their lecture
+
+## 3  Missing Mandatory Courses
+For every missing course:
+- Which category it belongs to (GED / Core Math / Major Core)
+- Whether the student has taken any prerequisite for it yet
+- Suggested semester to complete it
+
+## 4  Retakes & Grade Issues
+- Every course taken more than once — grade history and outcome
+- Courses still graded F (no passing retake) — critical, must resolve
+- Courses graded D/D+ — passed but weak, consider retake if CGPA allows
+- Withdrawn courses that have not been re-enrolled
+
+## 5  Graduation Eligibility
+- State clearly: **ELIGIBLE** or **NOT ELIGIBLE** and exactly why
+- List the 3–5 highest-priority actions the student should take next semester
+
+## 6  Recommendations
+- Optimistic scenario: minimum semesters to graduate with current load
+- Realistic scenario: accounting for course availability and prerequisites
+- Risk factors that could delay graduation
 
 ---
 
-**End with an overall quality score (0–100) and a prioritised top-5 fix list.**
+After running the tools, produce a clean report with all six sections.
+Close with a one-paragraph plain-language summary the student can act on.
 """
 
 
 @mcp.prompt()
 def quick_review() -> str:
     """
-    Quick review mode — flags only critical errors. Use for fast triage when
-    time is limited or the transcript is a first-pass draft.
+    Quick review mode — surface only critical academic issues. Use when a student
+    needs an instant answer on whether they have urgent problems to fix, without
+    a full breakdown.
     """
     return """\
-You are a transcript reviewer performing a QUICK REVIEW. Focus exclusively on \
-**critical errors** that affect comprehension or integrity.
+You are an NSU academic advisor performing a QUICK REVIEW.
 
-Flag only the following issue types:
+Run `flag_issues` with checks=["failures", "probation", "withdrawals"] and
+`audit_transcript` to identify the most urgent problems only.
 
-1. **Speaker Misidentification** — text attributed to the wrong speaker
-2. **Missing Timestamps** — lines without timestamps when others have them
-3. **[inaudible] Clusters** — three or more consecutive inaudible segments
-4. **Factual Contradictions** — directly contradictory statements in the same file
-5. **Truncation** — transcript ends mid-sentence or mid-thought
+Report ONLY critical issues in this exact format:
 
 ---
 
-**Output format — one bullet per issue:**
-- `[TYPE]` `timestamp or line range` — one-sentence description
+**Academic Standing:** <standing>
+**CGPA:** <X.XX> / 4.00
+**Probation:** <Yes / No>
 
-Skip all minor grammar, spelling, and formatting issues.
+### Critical Issues
+- [FAILED] `<COURSE_CODE>` — failed with no passing retake; must re-enroll
+- [PROBATION] CGPA <X.XX> below 2.0 — at risk of dismissal
+- [MISSING CORE] `<COURSE_CODE>` — mandatory course not completed
 
-**Close with a three-line summary:**
-- Total critical issues found: N
-- Most urgent fix: <one line>
-- Overall impact: High / Medium / Low
+### Next Steps (top 3 only)
+1. <Most urgent action>
+2. <Second action>
+3. <Third action>
+
+---
+
+Skip all non-critical issues (warnings, low grades, incomplete courses).
+If there are NO critical issues, say so explicitly: "No critical issues found."
 """
 
 

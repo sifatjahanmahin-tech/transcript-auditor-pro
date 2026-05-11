@@ -5,7 +5,7 @@
       "args": ["-m", "transcript_mcp.server"],
       "cwd": "D:/vibecode project 1",
       "env": {
-        "BACKEND_URL": "http://localhost:8000"
+        "BACKEND_URL": "https://transcript-auditor-api.onrender.com"
       }
     }
   }

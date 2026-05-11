@@ -2,17 +2,17 @@ services:
   - type: web
     name: transcript-auditor-api
     runtime: docker
-    dockerfilePath: ./Dockerfile.backend
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        value: sqlite+aiosqlite:///./audit_pro.db
       - key: DATABASE_URL_SYNC
-        sync: false
+        value: sqlite:///./audit_pro.db
       - key: DATABASE_SSL
-        value: "true"
+        value: "false"
       - key: DEBUG
         value: "false"
       - key: SECRET_KEY
@@ -21,15 +21,13 @@ services:
         value: "HS256"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
+      - key: FRONTEND_URL
+        value: https://transcript-auditor-pro.vercel.app
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
         sync: false
-      - key: CORS_ORIGINS
-        sync: false
       - key: WORKER_COUNT
-        value: "2"
-      - key: FRONTEND_URL
-        sync: false
+        value: "1"

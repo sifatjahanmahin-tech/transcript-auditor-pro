@@ -19,11 +19,10 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from engine.audit_engine import run_audit
-from engine.cgpa_engine import calculate_cgpa
-from engine.credit_engine import calculate_valid_credits, resolve_retakes
-from models.data_models import (
-    NSU_GRADE_POINTS,
+from engine.audit_engine import run_audit  # noqa: E402
+from engine.cgpa_engine import calculate_cgpa  # noqa: E402
+from engine.credit_engine import calculate_valid_credits, resolve_retakes  # noqa: E402
+from models.data_models import (  # noqa: E402
     AuditResult,
     ProgramRequirements,
     TranscriptEntry,
@@ -152,10 +151,14 @@ def _semester_breakdown(entries: list[TranscriptEntry]) -> dict[str, Any]:
 
 
 def _standing(cgpa: float) -> str:
-    if cgpa >= 3.7: return "Dean's List"
-    if cgpa >= 3.3: return "Honor Roll"
-    if cgpa >= 2.5: return "Good Standing"
-    if cgpa >= 2.0: return "Satisfactory"
+    if cgpa >= 3.7:
+        return "Dean's List"
+    if cgpa >= 3.3:
+        return "Honor Roll"
+    if cgpa >= 2.5:
+        return "Good Standing"
+    if cgpa >= 2.0:
+        return "Satisfactory"
     return "Academic Probation"
 
 
@@ -271,8 +274,8 @@ class AcademicAnalyzer:
         ra: AuditResult = run_audit(ea, program)
         rb: AuditResult = run_audit(eb, program)
 
-        codes_a = set(e.course_code for e in ea)
-        codes_b = set(e.course_code for e in eb)
+        codes_a = {e.course_code for e in ea}
+        codes_b = {e.course_code for e in eb}
 
         return {
             "program": program.program_name,
@@ -363,7 +366,7 @@ class AcademicAnalyzer:
                     "severity": "critical",
                     "course_code": code,
                     "course_name": group[0].course_name,
-                    "detail": f"Failed with no passing retake (grade: F)",
+                    "detail": "Failed with no passing retake (grade: F)",
                 })
 
             if "withdrawals" in active:

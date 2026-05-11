@@ -23,11 +23,16 @@ services:
         value: "1440"
       - key: FRONTEND_URL
         value: https://transcript-auditor-pro.vercel.app
+      - key: GOOGLE_REDIRECT_URI
+        value: https://transcript-auditor-api.onrender.com/api/auth/google/callback
+      - key: MOBILE_REDIRECT_URI
+        value: https://transcript-auditor-api.onrender.com/api/auth/google/callback
+      - key: CORS_ORIGINS
+        value: '["https://transcript-auditor-pro.vercel.app","http://localhost:3000","http://localhost:8081","exp://localhost:8081"]'
+      - key: WORKER_COUNT
+        value: "1"
+      # ── Set these manually in the Render dashboard (Secrets) ──
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
-      - key: GOOGLE_REDIRECT_URI
-        sync: false
-      - key: WORKER_COUNT
-        value: "1"

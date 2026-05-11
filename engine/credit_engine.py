@@ -6,10 +6,10 @@ Handles retakes (keeps best grade), filters out F/W/I grades,
 and excludes 0-credit lab courses from the total.
 """
 
+import os
 import sys
-from typing import Dict, List, Tuple
 
-sys.path.insert(0, ".")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.data_models import (
     NON_CREDIT_GRADES,
@@ -18,7 +18,7 @@ from models.data_models import (
 )
 
 
-def resolve_retakes(entries: List[TranscriptEntry]) -> List[TranscriptEntry]:
+def resolve_retakes(entries: list[TranscriptEntry]) -> list[TranscriptEntry]:
     """
     For courses taken multiple times, keep only the BEST attempt
     (highest grade point). Ties are broken by keeping the latest semester.
@@ -26,7 +26,7 @@ def resolve_retakes(entries: List[TranscriptEntry]) -> List[TranscriptEntry]:
     Returns:
         A deduplicated list of TranscriptEntry objects.
     """
-    best: Dict[str, TranscriptEntry] = {}
+    best: dict[str, TranscriptEntry] = {}
 
     for entry in entries:
         code = entry.course_code
@@ -49,8 +49,8 @@ def resolve_retakes(entries: List[TranscriptEntry]) -> List[TranscriptEntry]:
 
 
 def calculate_valid_credits(
-    entries: List[TranscriptEntry],
-) -> Tuple[float, List[dict]]:
+    entries: list[TranscriptEntry],
+) -> tuple[float, list[dict]]:
     """
     Level 1: Calculate total earned credits.
 
@@ -65,7 +65,7 @@ def calculate_valid_credits(
         breakdown is a list of dicts with course details and status.
     """
     resolved = resolve_retakes(entries)
-    breakdown: List[dict] = []
+    breakdown: list[dict] = []
     total_credits = 0.0
 
     for entry in resolved:
@@ -73,7 +73,7 @@ def calculate_valid_credits(
         counted = True
 
         if entry.grade in NON_CREDIT_GRADES or entry.grade not in NSU_GRADE_POINTS:
-            grade_str = entry.grade if entry.grade is not None else 'blank'
+            grade_str = entry.grade if entry.grade is not None else "blank"
             status = f"[-] Excluded (grade: {grade_str})"
             counted = False
         elif entry.is_zero_credit():
@@ -83,14 +83,16 @@ def calculate_valid_credits(
         if counted:
             total_credits += entry.credits
 
-        breakdown.append({
-            "course_code": entry.course_code,
-            "course_name": entry.course_name,
-            "grade": entry.grade,
-            "credits": entry.credits,
-            "semester": entry.semester,
-            "status": status,
-            "counted": counted,
-        })
+        breakdown.append(
+            {
+                "course_code": entry.course_code,
+                "course_name": entry.course_name,
+                "grade": entry.grade,
+                "credits": entry.credits,
+                "semester": entry.semester,
+                "status": status,
+                "counted": counted,
+            }
+        )
 
     return total_credits, breakdown

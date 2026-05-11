@@ -6,25 +6,23 @@ and the NSU grading scale used throughout the system.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-
 
 # ──────────────────────────────────────────────
 # NSU Grading Scale
 # ──────────────────────────────────────────────
 
-NSU_GRADE_POINTS: Dict[str, float] = {
-    "A":  4.0,
+NSU_GRADE_POINTS: dict[str, float] = {
+    "A": 4.0,
     "A-": 3.7,
     "B+": 3.3,
-    "B":  3.0,
+    "B": 3.0,
     "B-": 2.7,
     "C+": 2.3,
-    "C":  2.0,
+    "C": 2.0,
     "C-": 1.7,
     "D+": 1.3,
-    "D":  1.0,
-    "F":  0.0,
+    "D": 1.0,
+    "F": 0.0,
 }
 
 # Grades that do NOT count toward earned credits or CGPA
@@ -38,9 +36,11 @@ PASSING_GRADES = set(NSU_GRADE_POINTS.keys()) - {"F"}
 # Dataclasses
 # ──────────────────────────────────────────────
 
+
 @dataclass
 class TranscriptEntry:
     """A single row from the student transcript CSV."""
+
     course_code: str
     course_name: str
     grade: str
@@ -52,7 +52,7 @@ class TranscriptEntry:
         grade = self.grade if self.grade is not None else ""
         return grade not in NON_CREDIT_GRADES
 
-    def grade_point(self) -> Optional[float]:
+    def grade_point(self) -> float | None:
         """Return the numeric grade point, or None if not on the scale."""
         grade = self.grade if self.grade is not None else ""
         return NSU_GRADE_POINTS.get(grade)
@@ -65,12 +65,13 @@ class TranscriptEntry:
 @dataclass
 class ProgramRequirements:
     """Parsed mandatory course requirements from a program markdown file."""
+
     program_name: str
     total_required_credits: int
-    mandatory_courses: Dict[str, List[str]] = field(default_factory=dict)
+    mandatory_courses: dict[str, list[str]] = field(default_factory=dict)
     # category_name -> [course_codes]
 
-    def all_mandatory_codes(self) -> List[str]:
+    def all_mandatory_codes(self) -> list[str]:
         """Flatten all mandatory course codes across every category."""
         codes = []
         for course_list in self.mandatory_courses.values():
@@ -81,15 +82,16 @@ class ProgramRequirements:
 @dataclass
 class AuditResult:
     """Complete audit output combining all three levels."""
+
     # Level 1
     total_valid_credits: float
-    credit_breakdown: List[dict] = field(default_factory=list)
+    credit_breakdown: list[dict] = field(default_factory=list)
 
     # Level 2
     cgpa: float = 0.0
-    waived_courses: List[str] = field(default_factory=list)
+    waived_courses: list[str] = field(default_factory=list)
 
     # Level 3
-    missing_courses: Dict[str, List[str]] = field(default_factory=dict)
+    missing_courses: dict[str, list[str]] = field(default_factory=dict)
     on_probation: bool = False
-    completed_courses: List[str] = field(default_factory=list)
+    completed_courses: list[str] = field(default_factory=list)

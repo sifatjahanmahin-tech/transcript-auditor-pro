@@ -6,24 +6,24 @@ Identifies missing courses, handles waivers, and flags
 probation when CGPA < 2.0.
 """
 
+import os
 import sys
-from typing import Dict, List, Set
 
-sys.path.insert(0, ".")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from engine.cgpa_engine import calculate_cgpa
+from engine.credit_engine import calculate_valid_credits, resolve_retakes
 from models.data_models import (
     AuditResult,
     ProgramRequirements,
     TranscriptEntry,
 )
-from engine.credit_engine import calculate_valid_credits, resolve_retakes
-from engine.cgpa_engine import calculate_cgpa
 
 
 def run_audit(
-    entries: List[TranscriptEntry],
+    entries: list[TranscriptEntry],
     program: ProgramRequirements,
-    waived_codes: Set[str] = None,
+    waived_codes: set[str] | None = None,
 ) -> AuditResult:
     """
     Full degree audit: credit tally + CGPA + deficiency analysis.
@@ -49,7 +49,7 @@ def run_audit(
     resolved = resolve_retakes(entries)
 
     # Build set of completed course codes (passing grades only)
-    completed: Set[str] = set()
+    completed: set[str] = set()
     for entry in resolved:
         grade_point = entry.grade_point()
         if entry.is_passing() and grade_point is not None:
@@ -59,7 +59,7 @@ def run_audit(
     completed.update(waived_codes)
 
     # Find missing mandatory courses by category
-    missing_by_category: Dict[str, List[str]] = {}
+    missing_by_category: dict[str, list[str]] = {}
     for category, required_codes in program.mandatory_courses.items():
         missing = [code for code in required_codes if code not in completed]
         if missing:

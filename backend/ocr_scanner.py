@@ -8,12 +8,8 @@ on scanned NSU transcript images. Includes:
   - Structured transcript parsing from raw OCR text
 """
 
-import io
-import os
 import re
-import tempfile
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -35,6 +31,7 @@ except ImportError:
 
 class OCRError(Exception):
     """Custom exception for OCR processing failures."""
+
     pass
 
 
@@ -85,7 +82,8 @@ def preprocess_image(image_bytes: bytes) -> np.ndarray:
 
     # Adaptive threshold for handling variable lighting
     thresh = cv2.adaptiveThreshold(
-        denoised, 255,
+        denoised,
+        255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
         blockSize=11,
@@ -129,7 +127,9 @@ def _deskew(image: np.ndarray) -> np.ndarray:
     center = (w // 2, h // 2)
     rotation_matrix = cv2.getRotationMatrix2D(center, median_angle, 1.0)
     rotated = cv2.warpAffine(
-        image, rotation_matrix, (w, h),
+        image,
+        rotation_matrix,
+        (w, h),
         flags=cv2.INTER_CUBIC,
         borderMode=cv2.BORDER_REPLICATE,
     )
@@ -137,7 +137,7 @@ def _deskew(image: np.ndarray) -> np.ndarray:
     return rotated
 
 
-def extract_text(image_bytes: bytes) -> Tuple[str, float]:
+def extract_text(image_bytes: bytes) -> tuple[str, float]:
     """
     Extract text from an image using Tesseract OCR.
 
@@ -182,11 +182,11 @@ def extract_text(image_bytes: bytes) -> Tuple[str, float]:
                 "Tesseract OCR not found. Install it:\n"
                 "  Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki\n"
                 "  macOS/Linux: brew install tesseract / sudo apt install tesseract-ocr"
-            )
-        raise OCRError(f"OCR extraction failed: {str(e)}")
+            ) from e
+        raise OCRError(f"OCR extraction failed: {str(e)}") from e
 
 
-def parse_transcript_from_text(raw_text: str) -> List[dict]:
+def parse_transcript_from_text(raw_text: str) -> list[dict]:
     """
     Parse structured transcript data from raw OCR text.
 
@@ -207,23 +207,23 @@ def parse_transcript_from_text(raw_text: str) -> List[dict]:
     # Pattern: Course code (letters + digits), then course name, then grade, credits, semester
     # NSU format example: "CSE115  Programming Language I  A  3  Fall 2022"
     course_code_pattern = re.compile(
-        r"^([A-Z]{2,4}\s?\d{3}[A-Z]?)\s+"   # Course code
-        r"(.+?)\s+"                           # Course name (greedy-lazy)
-        r"([A-F][+-]?|W|I)\s+"                # Grade
-        r"(\d+(?:\.\d+)?)\s+"                 # Credits
+        r"^([A-Z]{2,4}\s?\d{3}[A-Z]?)\s+"  # Course code
+        r"(.+?)\s+"  # Course name (greedy-lazy)
+        r"([A-F][+-]?|W|I)\s+"  # Grade
+        r"(\d+(?:\.\d+)?)\s+"  # Credits
         r"((?:Fall|Spring|Summer)\s+\d{4})",  # Semester
         re.IGNORECASE,
     )
 
     # Alternate pattern: tab-separated or multi-space separated
     alt_pattern = re.compile(
-        r"([A-Z]{2,4}\s?\d{3}[A-Z]?)"   # Course code
+        r"([A-Z]{2,4}\s?\d{3}[A-Z]?)"  # Course code
         r"[\t|]+\s*"
-        r"(.+?)"                          # Course name
+        r"(.+?)"  # Course name
         r"[\t|]+\s*"
-        r"([A-F][+-]?|W|I)"              # Grade
+        r"([A-F][+-]?|W|I)"  # Grade
         r"[\t|]+\s*"
-        r"(\d+(?:\.\d+)?)"              # Credits
+        r"(\d+(?:\.\d+)?)"  # Credits
         r"[\t|]+\s*"
         r"((?:Fall|Spring|Summer)\s+\d{4})",
         re.IGNORECASE,
@@ -240,13 +240,15 @@ def parse_transcript_from_text(raw_text: str) -> List[dict]:
 
         if match:
             code = re.sub(r"\s+", "", match.group(1)).upper()
-            entries.append({
-                "course_code": code,
-                "course_name": match.group(2).strip(),
-                "grade": match.group(3).strip().upper(),
-                "credits": float(match.group(4).strip()),
-                "semester": match.group(5).strip(),
-            })
+            entries.append(
+                {
+                    "course_code": code,
+                    "course_name": match.group(2).strip(),
+                    "grade": match.group(3).strip().upper(),
+                    "credits": float(match.group(4).strip()),
+                    "semester": match.group(5).strip(),
+                }
+            )
 
     return entries
 

@@ -6,10 +6,12 @@ All models use UUID primary keys for security and scalability.
 """
 
 import uuid
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -18,9 +20,9 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Uuid,
     create_engine,
 )
-from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -28,18 +30,26 @@ from backend.config import get_settings
 
 settings = get_settings()
 
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
 
 # ── Async Engine ──
-_connect_args = {"ssl": "require"} if settings.DATABASE_SSL else {"ssl": False}
-
-async_engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    pool_size=5,
-    max_overflow=5,
-    pool_pre_ping=True,
-    connect_args=_connect_args,
-)
+if _is_sqlite:
+    _connect_args = {"check_same_thread": False}
+    async_engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=settings.DEBUG,
+        connect_args=_connect_args,
+    )
+else:
+    _ssl_args: dict[str, Any] = {"ssl": "require"} if settings.DATABASE_SSL else {"ssl": False}
+    async_engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=settings.DEBUG,
+        pool_size=5,
+        max_overflow=5,
+        pool_pre_ping=True,
+        connect_args=_ssl_args,
+    )
 
 async_session_factory = async_sessionmaker(
     async_engine,
@@ -48,8 +58,13 @@ async_session_factory = async_sessionmaker(
 )
 
 # ── Sync engine for Alembic migrations ──
-_sync_connect_args = {"sslmode": "require"} if settings.DATABASE_SSL else {}
-sync_engine = create_engine(settings.DATABASE_URL_SYNC, echo=settings.DEBUG, connect_args=_sync_connect_args)
+if _is_sqlite:
+    sync_engine = create_engine(
+        settings.DATABASE_URL_SYNC, echo=settings.DEBUG, connect_args={"check_same_thread": False}
+    )
+else:
+    _sync_ssl_args = {"sslmode": "require"} if settings.DATABASE_SSL else {}
+    sync_engine = create_engine(settings.DATABASE_URL_SYNC, echo=settings.DEBUG, connect_args=_sync_ssl_args)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -64,6 +79,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # ── Base ──
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
     pass
 
 
@@ -73,17 +89,17 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(320), unique=True, nullable=False, index=True)
     name = Column(String(255), nullable=True)
     picture = Column(Text, nullable=True)
     google_sub = Column(String(255), unique=True, nullable=True, index=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Relationships
@@ -99,8 +115,8 @@ class User(Base):
 class AuditRecord(Base):
     __tablename__ = "audit_records"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Input metadata
     input_type = Column(String(20), nullable=False)  # "csv", "image", "ocr"
@@ -121,7 +137,7 @@ class AuditRecord(Base):
     ocr_raw_text = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Relationships
     user = relationship("User", back_populates="audit_records")
@@ -136,15 +152,15 @@ class AuditRecord(Base):
 class ProgramTemplate(Base):
     __tablename__ = "program_templates"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), unique=True, nullable=False, index=True)
     total_required_credits = Column(Integer, default=0)
     mandatory_courses = Column(JSON, nullable=False)  # {category: [course_codes]}
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     def __repr__(self) -> str:

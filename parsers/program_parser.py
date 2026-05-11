@@ -6,11 +6,11 @@ requirements grouped by category. Flexible enough to handle any
 program structure defined in the markdown.
 """
 
+import os
 import re
 import sys
-from typing import List
 
-sys.path.insert(0, ".")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.data_models import ProgramRequirements
 
@@ -59,10 +59,7 @@ def parse_program(filepath: str, program_name: str) -> ProgramRequirements:
             heading_text = first_line.lstrip("# ").strip()
         else:
             available = [s.split("\n", 1)[0].lstrip("# ").strip() for s in sections]
-            raise ValueError(
-                f"Program '{program_name}' not found.\n"
-                f"Available programs: {', '.join(available)}"
-            )
+            raise ValueError(f"Program '{program_name}' not found.\nAvailable programs: {', '.join(available)}")
 
     # ── Extract total required credits ──
     credits_match = re.search(r"Total Required Credits:\s*(\d+)", target_section)
@@ -103,6 +100,7 @@ def _fuzzy_match(text: str, query: str) -> bool:
     Case-insensitive substring match with normalization.
     Strips non-alphanumeric chars for a more flexible comparison.
     """
+
     def normalize(s: str) -> str:
         return re.sub(r"[^a-z0-9]", "", s.lower())
 

@@ -14,8 +14,8 @@ import logging
 import os
 import sys
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.config import get_settings
 from backend.database import Base, async_engine
-from backend.routes import auth_routes, audit_routes, history_routes
+from backend.routes import audit_routes, auth_routes, history_routes, mcp_routes
 from backend.schemas import HealthResponse
 
 settings = get_settings()
@@ -65,9 +65,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 async def _seed_programs():
     """Load program definitions from program.md into DB if not already present."""
+    from sqlalchemy import select
+
     from backend.database import ProgramTemplate, async_session_factory
     from parsers.program_parser import parse_program
-    from sqlalchemy import select
 
     program_file = None
     for path in ["program.md", "data/program.md"]:
@@ -159,6 +160,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_routes.router)
     app.include_router(audit_routes.router)
     app.include_router(history_routes.router)
+    app.include_router(mcp_routes.router)
 
     # ── Health Check ──
     @app.get("/api/health", response_model=HealthResponse, tags=["System"])
@@ -168,9 +170,7 @@ def create_app() -> FastAPI:
         db_status = "connected"
         try:
             async with async_engine.connect() as conn:
-                await conn.execute(
-                    __import__("sqlalchemy").text("SELECT 1")
-                )
+                await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
         except Exception:
             db_status = "disconnected"
 
@@ -178,6 +178,7 @@ def create_app() -> FastAPI:
         ocr_ok = False
         try:
             import pytesseract
+
             pytesseract.get_tesseract_version()
             ocr_ok = True
         except Exception:
@@ -194,24 +195,47 @@ def create_app() -> FastAPI:
     @app.get("/api/programs", tags=["Programs"])
     async def list_programs():
         """List all available degree programs."""
-        from backend.database import ProgramTemplate, async_session_factory
         from sqlalchemy import select
 
-        async with async_session_factory() as db:
-            result = await db.execute(select(ProgramTemplate))
-            templates = result.scalars().all()
+        from backend.database import ProgramTemplate, async_session_factory
 
-        return {
-            "programs": [
-                {
-                    "id": str(t.id),
-                    "name": t.name,
-                    "total_required_credits": t.total_required_credits,
-                    "mandatory_courses": t.mandatory_courses,
-                }
-                for t in templates
-            ]
-        }
+        _FALLBACK_PROGRAMS = [
+            {
+                "id": "1",
+                "name": "Computer Science & Engineering",
+                "total_required_credits": 130,
+                "mandatory_courses": {},
+            },
+            {
+                "id": "2",
+                "name": "Electrical & Computer Engineering",
+                "total_required_credits": 132,
+                "mandatory_courses": {},
+            },
+        ]
+
+        try:
+            async with async_session_factory() as db:
+                result = await db.execute(select(ProgramTemplate))
+                templates = result.scalars().all()
+
+            if not templates:
+                return {"programs": _FALLBACK_PROGRAMS}
+
+            return {
+                "programs": [
+                    {
+                        "id": str(t.id),
+                        "name": t.name,
+                        "total_required_credits": t.total_required_credits,
+                        "mandatory_courses": t.mandatory_courses,
+                    }
+                    for t in templates
+                ]
+            }
+        except Exception:
+            logger.warning("Database unavailable for /api/programs — returning static fallback.")
+            return {"programs": _FALLBACK_PROGRAMS}
 
     return app
 
@@ -226,7 +250,7 @@ if __name__ == "__main__":
         "backend.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.DEBUG,
-        workers=1 if settings.DEBUG else settings.WORKER_COUNT,
+        reload=False,  # reload incompatible with workers > 1
+        workers=1,
         log_level="debug" if settings.DEBUG else "info",
     )

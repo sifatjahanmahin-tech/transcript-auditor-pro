@@ -6,7 +6,6 @@ All secrets come from .env file or environment variables.
 """
 
 from functools import lru_cache
-from typing import List, Optional
 
 from pydantic_settings import BaseSettings
 
@@ -18,7 +17,14 @@ class Settings(BaseSettings):
     APP_NAME: str = "Transcript Auditor Pro"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        # Expo / mobile development origins
+        "http://localhost:8081",
+        "http://10.0.2.2:8000",
+        "exp://localhost:8081",
+    ]
 
     # ── Database ──
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/audit_pro"
@@ -32,11 +38,14 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+    # Mobile OAuth callback — must match what's registered in Google Cloud Console
+    # Use your machine's LAN IP so the emulator/device browser can reach it
+    MOBILE_REDIRECT_URI: str = "http://192.168.110.118:8000/api/auth/google/callback"
 
     # ── OCR ──
-    TESSERACT_CMD: Optional[str] = None  # Path to tesseract binary if not on PATH
+    TESSERACT_CMD: str | None = None  # Path to tesseract binary if not on PATH
     OCR_MAX_FILE_SIZE_MB: int = 10
-    OCR_ALLOWED_EXTENSIONS: List[str] = [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".pdf"]
+    OCR_ALLOWED_EXTENSIONS: list[str] = [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".pdf"]
 
     # ── Frontend ──
     FRONTEND_URL: str = "http://localhost:3000"
@@ -55,7 +64,7 @@ class Settings(BaseSettings):
     }
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Cached settings singleton."""
     return Settings()

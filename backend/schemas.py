@@ -6,10 +6,10 @@ following FastAPI best practices.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 # ═══════════════════════════════════════════════
@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr, Field
 # ═══════════════════════════════════════════════
 class TokenResponse(BaseModel):
     """JWT token response."""
+
     access_token: str
     token_type: str = "bearer"
     user: "UserResponse"
@@ -24,11 +25,13 @@ class TokenResponse(BaseModel):
 
 class GoogleAuthURL(BaseModel):
     """Google OAuth2 authorization URL."""
+
     auth_url: str
 
 
 class DeviceCodeResponse(BaseModel):
     """Device code flow response for CLI."""
+
     device_code: str
     user_code: str
     verification_url: str
@@ -38,7 +41,16 @@ class DeviceCodeResponse(BaseModel):
 
 class DeviceTokenRequest(BaseModel):
     """Poll request for device code flow."""
+
     device_code: str
+
+
+class MobileTokenRequest(BaseModel):
+    """PKCE token exchange request from Expo mobile app."""
+
+    code: str
+    code_verifier: str
+    redirect_uri: str
 
 
 # ═══════════════════════════════════════════════
@@ -46,10 +58,11 @@ class DeviceTokenRequest(BaseModel):
 # ═══════════════════════════════════════════════
 class UserResponse(BaseModel):
     """Public user information."""
+
     id: UUID
     email: str
-    name: Optional[str] = None
-    picture: Optional[str] = None
+    name: str | None = None
+    picture: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -60,12 +73,14 @@ class UserResponse(BaseModel):
 # ═══════════════════════════════════════════════
 class AuditRequest(BaseModel):
     """Request body for CSV-based audit."""
+
     program_name: str = Field(..., min_length=1, description="Name of the degree program")
-    waived_courses: List[str] = Field(default_factory=list, description="Course codes to waive")
+    waived_courses: list[str] = Field(default_factory=list, description="Course codes to waive")
 
 
 class CourseEntry(BaseModel):
     """A single parsed transcript entry."""
+
     course_code: str
     course_name: str
     grade: str
@@ -75,9 +90,10 @@ class CourseEntry(BaseModel):
 
 class CreditBreakdownItem(BaseModel):
     """One row of the credit breakdown."""
+
     course_code: str
     course_name: str
-    grade: Optional[str]
+    grade: str | None
     credits: float
     semester: str
     status: str
@@ -86,18 +102,19 @@ class CreditBreakdownItem(BaseModel):
 
 class AuditResultResponse(BaseModel):
     """Full audit result response."""
+
     id: UUID
     input_type: str
-    original_filename: Optional[str] = None
+    original_filename: str | None = None
     program_name: str
     total_valid_credits: float
     cgpa: float
     on_probation: bool
-    credit_breakdown: Optional[List[Dict[str, Any]]] = None
-    missing_courses: Optional[Dict[str, List[str]]] = None
-    completed_courses: Optional[List[str]] = None
-    waived_courses: Optional[List[str]] = None
-    ocr_confidence: Optional[float] = None
+    credit_breakdown: list[dict[str, Any]] | None = None
+    missing_courses: dict[str, list[str]] | None = None
+    completed_courses: list[str] | None = None
+    waived_courses: list[str] | None = None
+    ocr_confidence: float | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -105,7 +122,8 @@ class AuditResultResponse(BaseModel):
 
 class AuditHistoryResponse(BaseModel):
     """Paginated audit history."""
-    items: List[AuditResultResponse]
+
+    items: list[AuditResultResponse]
     total: int
     page: int
     page_size: int
@@ -117,17 +135,19 @@ class AuditHistoryResponse(BaseModel):
 # ═══════════════════════════════════════════════
 class ProgramResponse(BaseModel):
     """Program template info."""
+
     id: UUID
     name: str
     total_required_credits: int
-    mandatory_courses: Dict[str, List[str]]
+    mandatory_courses: dict[str, list[str]]
 
     model_config = {"from_attributes": True}
 
 
 class ProgramListResponse(BaseModel):
     """List of available programs."""
-    programs: List[ProgramResponse]
+
+    programs: list[ProgramResponse]
 
 
 # ═══════════════════════════════════════════════
@@ -135,9 +155,10 @@ class ProgramListResponse(BaseModel):
 # ═══════════════════════════════════════════════
 class OCRResultResponse(BaseModel):
     """OCR extraction result."""
+
     raw_text: str
     confidence: float
-    parsed_entries: List[CourseEntry]
+    parsed_entries: list[CourseEntry]
     entry_count: int
 
 
@@ -146,6 +167,7 @@ class OCRResultResponse(BaseModel):
 # ═══════════════════════════════════════════════
 class HealthResponse(BaseModel):
     """API health check response."""
+
     status: str = "healthy"
     version: str
     database: str

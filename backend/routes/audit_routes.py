@@ -8,7 +8,6 @@ import csv
 import io
 import os
 import sys
-from typing import List
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,11 +31,10 @@ from parsers.program_parser import parse_program
 
 router = APIRouter(prefix="/api/audit", tags=["Audit"])
 
-# Path to program definitions
-PROGRAM_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "program.md")
-DATA_PROGRAM_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "program.md"
-)
+# Path to program definitions — go up 3 levels: routes/ -> backend/ -> project root
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROGRAM_FILE = os.path.join(_PROJECT_ROOT, "program.md")
+DATA_PROGRAM_FILE = os.path.join(_PROJECT_ROOT, "data", "program.md")
 
 
 def _get_program_file() -> str:
@@ -50,7 +48,7 @@ def _get_program_file() -> str:
     )
 
 
-def _entries_to_dicts(entries: List[TranscriptEntry]) -> List[dict]:
+def _entries_to_dicts(entries: list[TranscriptEntry]) -> list[dict]:
     """Convert TranscriptEntry objects to serializable dicts."""
     return [
         {
@@ -64,7 +62,7 @@ def _entries_to_dicts(entries: List[TranscriptEntry]) -> List[dict]:
     ]
 
 
-def _dicts_to_entries(data: List[dict]) -> List[TranscriptEntry]:
+def _dicts_to_entries(data: list[dict]) -> list[TranscriptEntry]:
     """Convert dicts back to TranscriptEntry objects."""
     return [
         TranscriptEntry(
@@ -109,7 +107,7 @@ async def audit_from_csv(
         if reader.fieldnames:
             reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
 
-        entries: List[TranscriptEntry] = []
+        entries: list[TranscriptEntry] = []
         for row in reader:
             cleaned = {k.strip().lower(): (v.strip() if v else "") for k, v in row.items()}
             course_code = cleaned.get("course_code", cleaned.get("course code", "")).upper()
@@ -123,24 +121,26 @@ async def audit_from_csv(
             except ValueError:
                 credits = 0.0
 
-            entries.append(TranscriptEntry(
-                course_code=course_code,
-                course_name=cleaned.get("course_name", cleaned.get("course name", "")),
-                grade=grade,
-                credits=credits,
-                semester=cleaned.get("semester", ""),
-            ))
+            entries.append(
+                TranscriptEntry(
+                    course_code=course_code,
+                    course_name=cleaned.get("course_name", cleaned.get("course name", "")),
+                    grade=grade,
+                    credits=credits,
+                    semester=cleaned.get("semester", ""),
+                )
+            )
 
-    except UnicodeDecodeError:
+    except UnicodeDecodeError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File encoding error. Please upload a UTF-8 encoded CSV.",
-        )
+        ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to parse CSV: {str(e)}",
-        )
+        ) from e
 
     if not entries:
         raise HTTPException(
@@ -158,7 +158,7 @@ async def audit_from_csv(
     try:
         program = parse_program(program_path, program_name)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # Run audit
     result = run_audit(entries, program, waived_set)
@@ -220,7 +220,7 @@ async def audit_from_image(
     try:
         raw_text, confidence = extract_text(image_bytes)
     except OCRError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
 
     if not raw_text.strip():
         raise HTTPException(
@@ -248,7 +248,7 @@ async def audit_from_image(
     try:
         program = parse_program(program_path, program_name)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # Run audit
     result = run_audit(entries, program, waived_set)
@@ -301,7 +301,7 @@ async def ocr_preview(
     try:
         raw_text, confidence = extract_text(image_bytes)
     except OCRError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
 
     parsed = parse_transcript_from_text(raw_text)
 

@@ -3,7 +3,6 @@ History routes — per-account audit history with pagination, search, and deleti
 """
 
 import math
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,8 +20,8 @@ router = APIRouter(prefix="/api/history", tags=["History"])
 async def get_audit_history(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    input_type: Optional[str] = Query(None, description="Filter by input type: csv, image"),
-    program_name: Optional[str] = Query(None, description="Filter by program name"),
+    input_type: str | None = Query(None, description="Filter by input type: csv, image"),
+    program_name: str | None = Query(None, description="Filter by program name"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -122,9 +121,7 @@ async def clear_all_history(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete ALL audit history for the current user. Use with caution."""
-    result = await db.execute(
-        select(AuditRecord).where(AuditRecord.user_id == current_user.id)
-    )
+    result = await db.execute(select(AuditRecord).where(AuditRecord.user_id == current_user.id))
     records = result.scalars().all()
 
     for record in records:
@@ -140,9 +137,7 @@ async def get_audit_stats(
 ):
     """Get summary statistics for the current user's audit history."""
     # Total audits
-    total_result = await db.execute(
-        select(func.count(AuditRecord.id)).where(AuditRecord.user_id == current_user.id)
-    )
+    total_result = await db.execute(select(func.count(AuditRecord.id)).where(AuditRecord.user_id == current_user.id))
     total_audits = total_result.scalar() or 0
 
     # By type
@@ -163,9 +158,7 @@ async def get_audit_stats(
     image_count = image_result.scalar() or 0
 
     # Average CGPA across all audits
-    avg_result = await db.execute(
-        select(func.avg(AuditRecord.cgpa)).where(AuditRecord.user_id == current_user.id)
-    )
+    avg_result = await db.execute(select(func.avg(AuditRecord.cgpa)).where(AuditRecord.user_id == current_user.id))
     avg_cgpa = avg_result.scalar() or 0.0
 
     # Probation count

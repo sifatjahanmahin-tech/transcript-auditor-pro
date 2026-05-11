@@ -8,9 +8,10 @@ Focuses on:
 """
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from backend.main import app
 from backend.database import Base, async_engine
+
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_test_db():
@@ -21,31 +22,69 @@ async def setup_test_db():
     yield
     await async_engine.dispose()
 
+
+@pytest.fixture
+def client():
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
 @pytest.mark.asyncio
-async def test_health_check():
+async def test_health_check(client):
     """Verify system health endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with client as ac:
         response = await ac.get("/api/health")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] in ["healthy", "degraded"]
     assert "version" in data
 
+
 @pytest.mark.asyncio
-async def test_list_programs_empty():
-    """Verify programs endpoint returns empty list initially."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+async def test_list_programs(client):
+    """Verify programs endpoint returns list."""
+    async with client as ac:
         response = await ac.get("/api/programs")
-    
+
     assert response.status_code == 200
     assert "programs" in response.json()
 
+
 @pytest.mark.asyncio
-async def test_unauthorized_history():
+async def test_unauthorized_history(client):
     """Verify history endpoint is protected by auth."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with client as ac:
         response = await ac.get("/api/history")
-    
-    # 401 Unauthorized expected without token
+
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_csv_audit(client):
+    """Verify CSV audit endpoint requires auth."""
+    async with client as ac:
+        response = await ac.post("/api/audit/csv")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_image_audit(client):
+    """Verify image audit endpoint requires auth."""
+    async with client as ac:
+        response = await ac.post("/api/audit/image")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_health_has_required_fields(client):
+    """Health response includes all expected fields."""
+    async with client as ac:
+        response = await ac.get("/api/health")
+
+    data = response.json()
+    assert "status" in data
+    assert "version" in data
+    assert "database" in data
+    assert "ocr_available" in data

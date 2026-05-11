@@ -1,0 +1,46 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = [
+    ".git", ".venv", "__pycache__", "node_modules",
+    "frontend", "migrations", "stress_test_data",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in default arguments (FastAPI Depends)
+    "SIM108", # ternary instead of if-else (readability preference)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend", "engine", "models", "parsers", "cli"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+no_error_summary = true
+exclude = ["frontend/", "migrations/", "stress_test_data/"]

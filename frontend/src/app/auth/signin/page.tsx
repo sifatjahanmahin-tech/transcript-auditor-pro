@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, ShieldCheck, Mail, Loader2 } from "lucide-react";
+import { GraduationCap, ShieldCheck, Database, Loader2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -25,64 +27,92 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent">
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#020617]">
+
+      {/* Animated background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-[30%] -left-[20%] w-[700px] h-[700px] bg-indigo-600/10 rounded-full blur-[160px] animate-blob" />
+        <div className="absolute -bottom-[20%] -right-[15%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[130px] animate-blob-2" />
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.022) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }} />
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 28, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-sm relative z-10"
       >
-        <div className="card glass p-8 md:p-10 text-center relative overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 blur-[80px] rounded-full" />
-          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-accent/20 blur-[80px] rounded-full" />
+        <div
+          className="rounded-3xl p-8 relative overflow-hidden"
+          style={{
+            background: 'rgba(13, 20, 40, 0.92)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 40px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(99,102,241,0.08)',
+          }}
+        >
+          {/* Top glow line */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-44 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
 
-          <div className="flex justify-center mb-6">
-            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
-              <GraduationCap className="text-primary" size={40} strokeWidth={1.5} />
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-5 shadow-2xl shadow-indigo-500/35">
+              <GraduationCap className="text-white" size={30} strokeWidth={1.5} />
             </div>
-          </div>
-
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome Back</h1>
-          <p className="text-sm opacity-50 mb-10 max-w-[280px] mx-auto">
-            Securely access your degree audit with your official student account.
-          </p>
-
-          <div className="space-y-4 relative z-10">
-            {error && (
-              <p className="text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-2">
-                {error}
-              </p>
-            )}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full py-4 bg-white text-black font-bold rounded-xl flex items-center justify-center gap-3 hover:bg-white/90 transition-all active:scale-[0.98] shadow-lg shadow-white/5 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin text-black" />
-              ) : (
-                <img
-                  src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png"
-                  alt="Google Logo"
-                  className="w-6 h-6"
-                />
-              )}
-              {loading ? "Redirecting..." : "Continue with Google"}
-            </button>
-
-            <p className="text-[11px] opacity-30 mt-8 px-4">
-              By continuing, you agree to the Transcript Auditor Pro Terms of Service and Privacy Policy.
+            <h1 className="text-[1.6rem] font-bold tracking-tight mb-2">Welcome to Audit Pro</h1>
+            <p className="text-sm text-white/38 text-center leading-relaxed max-w-[200px]">
+              Sign in with your student Google account to continue
             </p>
           </div>
 
-          <div className="mt-12 flex items-center justify-center gap-6 opacity-30 grayscale contrast-125 border-t border-white/5 pt-8">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <ShieldCheck size={14} /> Encrypted
+          {/* Error */}
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+              {error}
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest">
-              <Mail size={14} /> Cloud Sync
-            </div>
+          )}
+
+          {/* Google sign-in */}
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="w-full py-3.5 bg-white text-gray-900 font-semibold rounded-xl flex items-center justify-center gap-3 hover:bg-gray-50 active:scale-[0.98] transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          >
+            {loading ? (
+              <Loader2 size={18} className="animate-spin text-gray-500" />
+            ) : (
+              <Image
+                src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png"
+                alt="Google"
+                width={20}
+                height={20}
+              />
+            )}
+            {loading ? "Redirecting..." : "Continue with Google"}
+          </button>
+
+          {/* Trust indicators */}
+          <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-center gap-6">
+            {[
+              { icon: <ShieldCheck size={12} />, text: "End-to-end encrypted" },
+              { icon: <Database size={12} />, text: "Cloud synced" },
+            ].map(f => (
+              <div key={f.text} className="flex items-center gap-1.5 text-[10px] text-white/22 font-medium">
+                {f.icon} {f.text}
+              </div>
+            ))}
           </div>
+
+          <p className="text-[10px] text-white/18 text-center mt-4 leading-relaxed">
+            By continuing you agree to our Terms of Service and Privacy Policy
+          </p>
         </div>
+
+        <p className="text-center mt-5 text-xs text-white/28">
+          <Link href="/" className="hover:text-white/55 transition-colors">← Back to home</Link>
+        </p>
       </motion.div>
     </div>
   );

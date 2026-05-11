@@ -2,12 +2,15 @@
 Authentication routes — Google OAuth2 login/callback + device code flow.
 """
 
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.config import get_settings
 from backend.auth import (
+    GOOGLE_AUTH_URL,
+    GOOGLE_SCOPES,
     create_access_token,
     exchange_google_code,
     get_current_user,
@@ -16,11 +19,13 @@ from backend.auth import (
     poll_device_token,
     request_device_code,
 )
+from backend.config import get_settings
 from backend.database import User, get_db
 from backend.schemas import (
     DeviceCodeResponse,
     DeviceTokenRequest,
     GoogleAuthURL,
+    MobileTokenRequest,
     TokenResponse,
     UserResponse,
 )
@@ -38,20 +43,46 @@ async def google_login():
     return GoogleAuthURL(auth_url=auth_url)
 
 
+@router.get("/mobile/login")
+async def mobile_google_login():
+    """
+    Redirect the mobile app browser directly to Google OAuth.
+    Uses the mobile redirect URI and embeds state=mobile so the
+    callback knows to redirect back to the app deep-link scheme.
+    """
+    settings = get_settings()
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": settings.MOBILE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": GOOGLE_SCOPES,
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": "mobile",
+    }
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+    return RedirectResponse(url=auth_url)
+
+
 @router.get("/google/callback")
 async def google_callback(
     code: str = Query(..., description="Authorization code from Google"),
+    state: str | None = Query(None, description="OAuth state parameter"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Handle Google OAuth2 callback.
-    Exchanges code for tokens, creates/updates user, redirects to frontend with JWT.
+    Handle Google OAuth2 callback for both web and mobile.
+    - state=mobile  → exchanges code with mobile redirect URI, deep-links back to app
+    - otherwise     → exchanges code with web redirect URI, redirects to frontend
     """
-    # Exchange code for user info
-    google_data = await exchange_google_code(code)
+    settings = get_settings()
+    is_mobile = state == "mobile"
+
+    # Use the correct redirect URI depending on origin
+    redirect_uri = settings.MOBILE_REDIRECT_URI if is_mobile else settings.GOOGLE_REDIRECT_URI
+    google_data = await exchange_google_code(code, redirect_uri=redirect_uri)
     user_info = google_data["user_info"]
 
-    # Get or create user
     user = await get_or_create_google_user(
         db=db,
         google_sub=user_info["sub"],
@@ -60,10 +91,13 @@ async def google_callback(
         picture=user_info.get("picture"),
     )
 
-    # Create JWT
     token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
-    frontend_url = get_settings().FRONTEND_URL
+    if is_mobile:
+        # Deep-link back to the Expo app
+        return RedirectResponse(url=f"transcriptauditor://auth/callback?token={token}")
+
+    frontend_url = settings.FRONTEND_URL
     return RedirectResponse(url=f"{frontend_url}/auth/callback?token={token}")
 
 
@@ -74,6 +108,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 # ── Device Code Flow (CLI) ──
+
 
 @router.post("/device/code", response_model=DeviceCodeResponse)
 async def device_code():
@@ -89,6 +124,55 @@ async def device_code():
         expires_in=result.get("expires_in", 1800),
         interval=result.get("interval", 5),
     )
+
+
+@router.post("/mobile/token")
+async def mobile_token(
+    request: MobileTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Exchange a Google authorization code (PKCE flow) for our backend JWT.
+    Used by the Expo mobile app after the OAuth redirect.
+    """
+    import httpx
+
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": request.code,
+                "client_id": get_settings().GOOGLE_CLIENT_ID,
+                "redirect_uri": request.redirect_uri,
+                "code_verifier": request.code_verifier,
+                "grant_type": "authorization_code",
+            },
+        )
+
+    if token_resp.status_code != 200:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"Google token exchange failed: {token_resp.text}")
+
+    tokens = token_resp.json()
+
+    async with httpx.AsyncClient() as client:
+        userinfo_resp = await client.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+    user_info = userinfo_resp.json()
+
+    user = await get_or_create_google_user(
+        db=db,
+        google_sub=user_info["sub"],
+        email=user_info["email"],
+        name=user_info.get("name"),
+        picture=user_info.get("picture"),
+    )
+
+    token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 
 
 @router.post("/device/token")

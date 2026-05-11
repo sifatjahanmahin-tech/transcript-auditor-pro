@@ -16,8 +16,24 @@ node_modules/
 frontend/.next/
 frontend/out/
 
+# Expo mobile
+mobile/.expo/
+mobile/dist/
+mobile/android/
+mobile/ios/
+
+# Load test reports
+tests/load_report_*.html
+
+# pre-commit
+.pre-commit-cache/
+
 # Uploads
 uploads/
+
+# SQLite local DB
+*.db
+*.sqlite
 
 # Misc
 *.log

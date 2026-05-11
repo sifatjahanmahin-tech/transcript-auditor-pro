@@ -6,23 +6,21 @@ Implements interactive CLI waiver prompts. Ensures W and F grades
 do not break the math.
 """
 
+import os
 import sys
-from typing import Dict, List, Set, Tuple
 
-sys.path.insert(0, ".")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from engine.credit_engine import resolve_retakes
 from models.data_models import (
-    NON_CREDIT_GRADES,
-    NSU_GRADE_POINTS,
     TranscriptEntry,
 )
-from engine.credit_engine import resolve_retakes
 
 
 def calculate_cgpa(
-    entries: List[TranscriptEntry],
-    waived_codes: Set[str] = None,
-) -> Tuple[float, float, float]:
+    entries: list[TranscriptEntry],
+    waived_codes: set[str] | None = None,
+) -> tuple[float, float, float]:
     """
     Calculate weighted CGPA after resolving retakes.
 
@@ -78,8 +76,8 @@ def calculate_cgpa(
 
 
 def prompt_waivers(
-    waiver_candidates: List[str] = None,
-) -> Set[str]:
+    waiver_candidates: list[str] | None = None,
+) -> set[str]:
     """
     Interactive CLI prompt that asks the user about course waivers.
 
@@ -93,7 +91,7 @@ def prompt_waivers(
     if waiver_candidates is None:
         waiver_candidates = ["ENG102", "BUS112"]
 
-    waived: Set[str] = set()
+    waived: set[str] = set()
 
     print("\n╔══════════════════════════════════════════╗")
     print("║         COURSE WAIVER CHECK              ║")

@@ -8,15 +8,14 @@ Handles:
   - Device-code flow for CLI authentication
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 from uuid import UUID
 
 import httpx
-from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,7 +35,7 @@ GOOGLE_DEVICE_CODE_URL = "https://oauth2.googleapis.com/device/code"
 GOOGLE_SCOPES = "openid email profile"
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token.
 
@@ -48,10 +47,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         Encoded JWT string.
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -70,11 +67,11 @@ def verify_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
@@ -103,11 +100,11 @@ async def get_current_user(
 
     try:
         uid = UUID(user_id)
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid user ID in token",
-        )
+        ) from e
 
     result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
@@ -125,8 +122,8 @@ async def get_or_create_google_user(
     db: AsyncSession,
     google_sub: str,
     email: str,
-    name: Optional[str] = None,
-    picture: Optional[str] = None,
+    name: str | None = None,
+    picture: str | None = None,
 ) -> User:
     """
     Find existing user by Google sub ID, or create a new one.
@@ -151,11 +148,11 @@ async def get_or_create_google_user(
 
         if user is not None:
             # Link existing email-based account to Google
-            user.google_sub = google_sub
+            user.google_sub = google_sub  # type: ignore[assignment]
             if name:
-                user.name = name
+                user.name = name  # type: ignore[assignment]
             if picture:
-                user.picture = picture
+                user.picture = picture  # type: ignore[assignment]
         else:
             # Create brand new user
             user = User(
@@ -172,12 +169,13 @@ async def get_or_create_google_user(
     return user
 
 
-async def exchange_google_code(code: str) -> dict:
+async def exchange_google_code(code: str, redirect_uri: str | None = None) -> dict:
     """
     Exchange an authorization code for Google tokens and user info.
 
     Args:
         code: Authorization code from Google redirect.
+        redirect_uri: Override the default redirect URI (e.g. for mobile flow).
 
     Returns:
         Dict with 'access_token', 'user_info' (email, name, picture, sub).
@@ -193,7 +191,7 @@ async def exchange_google_code(code: str) -> dict:
                 "code": code,
                 "client_id": settings.GOOGLE_CLIENT_ID,
                 "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "redirect_uri": redirect_uri or settings.GOOGLE_REDIRECT_URI,
                 "grant_type": "authorization_code",
             },
         )
@@ -232,7 +230,7 @@ async def exchange_google_code(code: str) -> dict:
         }
 
 
-def get_google_auth_url(state: Optional[str] = None) -> str:
+def get_google_auth_url(state: str | None = None) -> str:
     """
     Build the Google OAuth2 authorization URL.
 
@@ -281,7 +279,7 @@ async def request_device_code() -> dict:
         return response.json()
 
 
-async def poll_device_token(device_code: str) -> Optional[dict]:
+async def poll_device_token(device_code: str) -> dict | None:
     """
     Poll Google for device token (CLI auth flow).
 

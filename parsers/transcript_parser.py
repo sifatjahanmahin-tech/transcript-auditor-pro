@@ -7,16 +7,15 @@ casing, and missing fields.
 """
 
 import csv
+import os
 import sys
-from typing import List
 
-# Allow running from project root
-sys.path.insert(0, ".")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.data_models import TranscriptEntry
 
 
-def parse_transcript(filepath: str) -> List[TranscriptEntry]:
+def parse_transcript(filepath: str) -> list[TranscriptEntry]:
     """
     Parse a transcript CSV file into a list of TranscriptEntry objects.
 
@@ -30,7 +29,7 @@ def parse_transcript(filepath: str) -> List[TranscriptEntry]:
         - Non-numeric credits (defaults to 0)
         - BOM characters in UTF-8 files
     """
-    entries: List[TranscriptEntry] = []
+    entries: list[TranscriptEntry] = []
 
     with open(filepath, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile)
@@ -70,12 +69,14 @@ def parse_transcript(filepath: str) -> List[TranscriptEntry]:
             if grade:
                 grade = grade.replace(" ", "")  # "B +" -> "B+"
 
-            entries.append(TranscriptEntry(
-                course_code=course_code,
-                course_name=course_name,
-                grade=grade,
-                credits=credits,
-                semester=semester,
-            ))
+            entries.append(
+                TranscriptEntry(
+                    course_code=course_code,
+                    course_name=course_name,
+                    grade=grade,
+                    credits=credits,
+                    semester=semester,
+                )
+            )
 
     return entries

@@ -44,13 +44,28 @@ async def google_login():
 
 
 @router.get("/mobile/login")
-async def mobile_google_login():
+async def mobile_google_login(
+    callback_url: str | None = Query(None, description="Deep-link URL the app wants the token delivered to"),
+):
     """
     Redirect the mobile app browser directly to Google OAuth.
-    Uses the mobile redirect URI and embeds state=mobile so the
-    callback knows to redirect back to the app deep-link scheme.
+
+    The caller supplies a `callback_url` (e.g. exp://... in Expo Go or
+    transcriptauditor:// in a native build).  That URL is base64-encoded
+    into the OAuth `state` parameter so the callback endpoint can redirect
+    the token back to the correct scheme.
     """
+    import base64
+    import json
+
     settings = get_settings()
+
+    if callback_url:
+        state_payload = json.dumps({"type": "mobile", "callback": callback_url})
+        state = base64.urlsafe_b64encode(state_payload.encode()).decode().rstrip("=")
+    else:
+        state = "mobile"
+
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.MOBILE_REDIRECT_URI,
@@ -58,7 +73,7 @@ async def mobile_google_login():
         "scope": GOOGLE_SCOPES,
         "access_type": "offline",
         "prompt": "consent",
-        "state": "mobile",
+        "state": state,
     }
     auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     return RedirectResponse(url=auth_url)
@@ -72,13 +87,33 @@ async def google_callback(
 ):
     """
     Handle Google OAuth2 callback for both web and mobile.
-    - state=mobile  → exchanges code with mobile redirect URI, deep-links back to app
-    - otherwise     → exchanges code with web redirect URI, redirects to frontend
-    """
-    settings = get_settings()
-    is_mobile = state == "mobile"
 
-    # Use the correct redirect URI depending on origin
+    State can be:
+    - "mobile"                → legacy; redirects to transcriptauditor://auth/callback
+    - base64-encoded JSON     → {"type":"mobile","callback":"<deep-link-url>"}
+    - absent/other            → web flow; redirects to frontend
+    """
+    import base64
+    import json
+
+    settings = get_settings()
+    is_mobile = False
+    mobile_callback: str | None = None
+
+    if state:
+        if state == "mobile":
+            is_mobile = True
+        else:
+            try:
+                # Restore stripped padding
+                padded = state + "=" * (-len(state) % 4)
+                payload = json.loads(base64.urlsafe_b64decode(padded).decode())
+                if payload.get("type") == "mobile":
+                    is_mobile = True
+                    mobile_callback = payload.get("callback")
+            except Exception:
+                pass
+
     redirect_uri = settings.MOBILE_REDIRECT_URI if is_mobile else settings.GOOGLE_REDIRECT_URI
     google_data = await exchange_google_code(code, redirect_uri=redirect_uri)
     user_info = google_data["user_info"]
@@ -94,8 +129,9 @@ async def google_callback(
     token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
     if is_mobile:
-        # Deep-link back to the Expo app
-        return RedirectResponse(url=f"transcriptauditor://auth/callback?token={token}")
+        destination = mobile_callback or "transcriptauditor://auth/callback"
+        sep = "&" if "?" in destination else "?"
+        return RedirectResponse(url=f"{destination}{sep}token={token}")
 
     frontend_url = settings.FRONTEND_URL
     return RedirectResponse(url=f"{frontend_url}/auth/callback?token={token}")

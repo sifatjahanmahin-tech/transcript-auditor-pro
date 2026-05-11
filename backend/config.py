@@ -38,9 +38,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"  # Override via env var in prod
-    # Mobile OAuth callback — must match what's registered in Google Cloud Console
-    # Use your machine's LAN IP so the emulator/device browser can reach it
-    MOBILE_REDIRECT_URI: str = "http://192.168.110.118:8000/api/auth/google/callback"
+    # Mobile OAuth callback — same Render URL as web; state=mobile triggers the deep-link redirect
+    MOBILE_REDIRECT_URI: str = "https://transcript-auditor-api.onrender.com/api/auth/google/callback"
 
     # ── OCR ──
     TESSERACT_CMD: str | None = None  # Path to tesseract binary if not on PATH

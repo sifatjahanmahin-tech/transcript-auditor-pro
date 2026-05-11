@@ -404,7 +404,7 @@ export default function SettingsScreen(): JSX.Element {
                 marginTop: 8,
               },
             ]}
-            onPress={() => Linking.openURL('https://github.com/').catch(() => undefined)}
+            onPress={() => Linking.openURL('https://github.com/sifatjahanmahin-tech/transcript-auditor-pro').catch(() => undefined)}
           >
             <Text style={[styles.btnText, { color: colors.text }]}>View on GitHub</Text>
           </TouchableOpacity>

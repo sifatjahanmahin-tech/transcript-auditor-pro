@@ -60,7 +60,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "http://192.168.110.118:8000",
+      "apiUrl": "https://transcript-auditor-api.onrender.com",
       "googleClientId": "295441721372-6ccraqnf34rkmobq184opp81o2ot41j7.apps.googleusercontent.com"
     }
   }

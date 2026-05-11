@@ -65,7 +65,7 @@ function inferMimeFromName(name: string, fallback = 'application/octet-stream'):
   }
 }
 
-export default function UploadScreen(): JSX.Element {
+export default function UploadScreen(): React.ReactElement {
   const { colors } = useTheme();
   const navigation = useNavigation<Nav>();
   const online = useIsOnline();
@@ -504,7 +504,7 @@ function Section({
   label: string;
   colors: ReturnType<typeof useTheme>['colors'];
   children: React.ReactNode;
-}): JSX.Element {
+}): React.ReactElement {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{label}</Text>
@@ -523,7 +523,7 @@ function UploadTile({
   label: string;
   onPress: () => void;
   colors: ReturnType<typeof useTheme>['colors'];
-}): JSX.Element {
+}): React.ReactElement {
   return (
     <TouchableOpacity
       onPress={onPress}

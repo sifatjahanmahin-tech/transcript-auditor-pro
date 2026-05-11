@@ -43,7 +43,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-export default function DashboardScreen(): JSX.Element {
+export default function DashboardScreen(): React.ReactElement {
   const { user } = useAuth();
   const { colors } = useTheme();
   const navigation = useNavigation<Nav>();

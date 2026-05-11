@@ -24,7 +24,7 @@ export default function StatsCard({
   color,
   icon,
   style,
-}: StatsCardProps): JSX.Element {
+}: StatsCardProps): React.ReactElement {
   const { colors } = useTheme();
   const accent = color ?? colors.accent;
 

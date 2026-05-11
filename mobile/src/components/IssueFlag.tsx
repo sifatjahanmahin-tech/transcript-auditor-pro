@@ -37,7 +37,7 @@ export default function IssueFlag({
   auditId,
   courseCode,
   size = 18,
-}: IssueFlagProps): JSX.Element {
+}: IssueFlagProps): React.ReactElement {
   const { colors } = useTheme();
   const [open, setOpen] = useState<boolean>(false);
   const [annotation, setAnnotation] = useState<Annotation | null>(null);

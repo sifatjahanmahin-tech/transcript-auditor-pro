@@ -36,7 +36,7 @@ import {
   syncOfflineQueue,
 } from '@/lib/offline';
 
-export default function SettingsScreen(): JSX.Element {
+export default function SettingsScreen(): React.ReactElement {
   const { colors, theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
 
@@ -422,7 +422,7 @@ function Section({
   title: string;
   colors: ReturnType<typeof useTheme>['colors'];
   children: React.ReactNode;
-}): JSX.Element {
+}): React.ReactElement {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{title}</Text>

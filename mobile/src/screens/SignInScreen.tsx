@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { extractApiError } from '@/lib/api';
 
-export default function SignInScreen(): JSX.Element {
+export default function SignInScreen(): React.ReactElement {
   const { colors } = useTheme();
   const { signIn } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);

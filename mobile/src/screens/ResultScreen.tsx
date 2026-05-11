@@ -55,7 +55,7 @@ function cgpaColor(
   return colors.error;
 }
 
-export default function ResultScreen(): JSX.Element {
+export default function ResultScreen(): React.ReactElement {
   const { colors } = useTheme();
   const navigation = useNavigation<Nav>();
   const route = useRoute<ResultRoute>();
@@ -238,7 +238,7 @@ function SummaryTab({
   result: RouteProp<RootStackParamList, 'Result'>['params']['result'];
   colors: ReturnType<typeof useTheme>['colors'];
   totalMissing: number;
-}): JSX.Element {
+}): React.ReactElement {
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Program', value: result.program_name },
     { label: 'Input type', value: result.input_type.toUpperCase() },
@@ -296,7 +296,7 @@ function MissingTab({
   result: RouteProp<RootStackParamList, 'Result'>['params']['result'];
   colors: ReturnType<typeof useTheme>['colors'];
   totalMissing: number;
-}): JSX.Element {
+}): React.ReactElement {
   if (totalMissing === 0) {
     return (
       <View style={styles.allGoodWrap}>
@@ -358,7 +358,7 @@ function BreakdownTab({
   rows: CreditRow[];
   auditId: string;
   colors: ReturnType<typeof useTheme>['colors'];
-}): JSX.Element {
+}): React.ReactElement {
   if (rows.length === 0) {
     return (
       <View style={styles.allGoodWrap}>

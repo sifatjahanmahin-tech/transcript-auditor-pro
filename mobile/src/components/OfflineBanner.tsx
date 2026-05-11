@@ -20,7 +20,7 @@ interface OfflineBannerProps {
 export default function OfflineBanner({
   message,
   onConnectivityChange,
-}: OfflineBannerProps): JSX.Element | null {
+}: OfflineBannerProps): React.ReactElement | null {
   const { colors } = useTheme();
   const [online, setOnline] = useState<boolean>(true);
 

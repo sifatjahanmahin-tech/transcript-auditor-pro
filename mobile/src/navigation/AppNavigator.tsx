@@ -42,7 +42,7 @@ export type MainTabsParamList = {
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabsParamList>();
 
-function MainTabs(): JSX.Element {
+function MainTabs(): React.ReactElement {
   const { colors } = useTheme();
   return (
     <Tabs.Navigator
@@ -77,7 +77,7 @@ function MainTabs(): JSX.Element {
   );
 }
 
-export default function AppNavigator(): JSX.Element {
+export default function AppNavigator(): React.ReactElement {
   const { isAuthenticated, isLoading } = useAuth();
   const { theme, colors } = useTheme();
 

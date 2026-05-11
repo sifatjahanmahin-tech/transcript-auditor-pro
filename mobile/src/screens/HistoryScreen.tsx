@@ -32,7 +32,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-export default function HistoryScreen(): JSX.Element {
+export default function HistoryScreen(): React.ReactElement {
   const { colors } = useTheme();
   const navigation = useNavigation<Nav>();
   const online = useIsOnline();

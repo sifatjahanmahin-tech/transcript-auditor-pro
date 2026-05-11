@@ -21,7 +21,7 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Clipboard from 'expo-clipboard';
 
@@ -187,7 +187,7 @@ function buildHtml(markdown: string, programName: string): string {
 </style></head><body>${out.join('\n')}</body></html>`;
 }
 
-export default function ReportScreen(): JSX.Element {
+export default function ReportScreen(): React.ReactElement {
   const { colors } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation<Nav>();
@@ -224,10 +224,9 @@ export default function ReportScreen(): JSX.Element {
     setBusy('share');
     try {
       const fileName = `audit-${result.id}.${format === 'markdown' ? 'md' : 'json'}`;
-      const path = `${FileSystem.cacheDirectory ?? ''}${fileName}`;
-      await FileSystem.writeAsStringAsync(path, previewText, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      const file = new File(Paths.cache, fileName);
+      file.write(previewText);
+      const path = file.uri;
       const ok = await Sharing.isAvailableAsync();
       if (!ok) {
         Alert.alert('Sharing not supported on this device');

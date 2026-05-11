@@ -40,7 +40,7 @@ function missingCount(missing: Record<string, string[]>): number {
   return Object.values(missing).reduce((sum, list) => sum + list.length, 0);
 }
 
-export default function AuditCard({ audit, onPress, onLongPress }: AuditCardProps): JSX.Element {
+export default function AuditCard({ audit, onPress, onLongPress }: AuditCardProps): React.ReactElement {
   const { colors } = useTheme();
   const cgpaC = cgpaColor(audit.cgpa, colors);
   const missing = missingCount(audit.missing_courses);

@@ -46,6 +46,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: initialize DB tables on startup, cleanup on shutdown."""
     logger.info("Starting Transcript Auditor Pro v%s", settings.APP_VERSION)
 
+    # Validate OAuth config at startup so misconfigurations are obvious in logs
+    cid = settings.GOOGLE_CLIENT_ID
+    csec = settings.GOOGLE_CLIENT_SECRET
+    if not cid:
+        logger.error("GOOGLE_CLIENT_ID is not set — OAuth login will fail")
+    else:
+        logger.info("OAuth client_id loaded: %s...%s", cid[:8], cid[-6:])
+    if not csec:
+        logger.error("GOOGLE_CLIENT_SECRET is not set — OAuth token exchange will fail")
+    else:
+        logger.info("OAuth client_secret loaded: length=%d prefix=%s", len(csec), csec[:6])
+    logger.info("GOOGLE_REDIRECT_URI = %s", settings.GOOGLE_REDIRECT_URI)
+    logger.info("FRONTEND_URL        = %s", settings.FRONTEND_URL)
+
     # Create tables if they don't exist
     try:
         async with async_engine.begin() as conn:
@@ -184,12 +198,22 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
-        return HealthResponse(
-            status="healthy" if db_status == "connected" else "degraded",
-            version=settings.APP_VERSION,
-            database=db_status,
-            ocr_available=ocr_ok,
-        )
+        from fastapi.responses import JSONResponse as _JSONResponse
+
+        oauth_ok = bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET)
+        return _JSONResponse(content={
+            "status": "healthy" if db_status == "connected" else "degraded",
+            "version": settings.APP_VERSION,
+            "database": db_status,
+            "ocr_available": ocr_ok,
+            "oauth": {
+                "client_id_set": bool(settings.GOOGLE_CLIENT_ID),
+                "client_secret_set": bool(settings.GOOGLE_CLIENT_SECRET),
+                "client_secret_length": len(settings.GOOGLE_CLIENT_SECRET),
+                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "frontend_url": settings.FRONTEND_URL,
+            },
+        })
 
     # ── Programs List Endpoint ──
     @app.get("/api/programs", tags=["Programs"])
